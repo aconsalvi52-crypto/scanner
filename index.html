@@ -188,6 +188,95 @@
         let tempSuit = "de Picas";
         const DEFAULT_CARD = "As de Picas";
 
+        // ==========================================
+        // MOTOR DE SONIDO SINTÉTICO (Web Audio API)
+        // ==========================================
+        let audioCtx;
+        let scanIntervalId;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Sonido 1: Pitidos tipo radar durante el escaneo
+        function startScanSound() {
+            if (!audioCtx) return;
+            scanIntervalId = setInterval(() => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1000 + Math.random() * 500, audioCtx.currentTime); 
+                
+                gain.gain.setValueAtTime(0.02, audioCtx.currentTime); // Volumen bajito
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            }, 300); // Un pitido cada 300ms
+        }
+
+        function stopScanSound() {
+            clearInterval(scanIntervalId);
+        }
+
+        // Sonido 2: Acierto (Verde) - Doble campana aguda
+        function playSuccessSound() {
+            if (!audioCtx) return;
+            const playNote = (freq, timeOffset) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + timeOffset);
+                
+                gain.gain.setValueAtTime(0, audioCtx.currentTime + timeOffset);
+                gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + timeOffset + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + timeOffset + 0.5);
+                
+                osc.start(audioCtx.currentTime + timeOffset);
+                osc.stop(audioCtx.currentTime + timeOffset + 0.5);
+            };
+            
+            playNote(800, 0);     // Primer tono
+            playNote(1200, 0.15); // Segundo tono más agudo
+        }
+
+        // Sonido 3: Error (Rojo) - Doble zumbido grave
+        function playErrorSound() {
+            if (!audioCtx) return;
+            const playBuzz = (timeOffset) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.type = 'sawtooth'; // Sonido rasposo/zumbido
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime + timeOffset);
+                
+                gain.gain.setValueAtTime(0, audioCtx.currentTime + timeOffset);
+                gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + timeOffset + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + timeOffset + 0.3);
+                
+                osc.start(audioCtx.currentTime + timeOffset);
+                osc.stop(audioCtx.currentTime + timeOffset + 0.3);
+            };
+
+            playBuzz(0);
+            playBuzz(0.2);
+        }
+        // ==========================================
+
+
         document.addEventListener('DOMContentLoaded', () => {
             initSpeechRecognition();
             if (!localStorage.getItem('secretCard')) {
@@ -263,7 +352,6 @@
             if (SpeechRecognition) {
                 recognition = new SpeechRecognition();
                 recognition.lang = 'es-AR'; 
-                // En iOS a veces interimResults falla, pero lo dejamos true por velocidad
                 recognition.interimResults = true;
                 recognition.continuous = true;
 
@@ -276,14 +364,12 @@
                     if (latestTranscript.trim() === "") return;
                     debugText.textContent = latestTranscript.slice(-40);
 
-                    // Lógica para detectar FALSO en el momento exacto
                     if (currentStatus === 'scanning' || currentStatus === 'idle') {
                         if (latestTranscript.includes("falso") || latestTranscript.includes("mentira") || latestTranscript.includes("falsa")) {
                             isFakeDetected = true;
                         }
                     }
 
-                    // Lógica para revelar carta
                     if (currentStatus === 'success' && !cardRevealRequested) {
                         if (latestTranscript.includes("carta") && (latestTranscript.includes("analiza") || latestTranscript.includes("decime") || latestTranscript.includes("dime") || latestTranscript.includes("muestra") || latestTranscript.includes("ver"))) {
                             cardRevealRequested = true;
@@ -310,13 +396,15 @@
 
         // ENTRAR AL SISTEMA (Hack para iOS)
         enterBtn.addEventListener('click', async () => {
-            // HACK IOS 1: Desbloquear el motor de voz (SpeechSynthesis) en el primer click
+            // Inicializar motor de sonido
+            initAudio();
+
+            // Desbloquear el motor de voz (SpeechSynthesis)
             if ('speechSynthesis' in window) {
                 const unlockAudio = new SpeechSynthesisUtterance('');
                 speechSynthesis.speak(unlockAudio);
             }
 
-            // HACK IOS 2: Pedir permiso explícito de micro
             try {
                 await navigator.mediaDevices.getUserMedia({ audio: true });
                 micStatus.textContent = "Micro activado";
@@ -352,11 +440,13 @@
         startScanBtn.addEventListener('click', () => {
             currentStatus = 'scanning';
             
-            // Forzar reinicio de reconocimiento en iOS al tocar el botón
             if (recognition) {
                 try { recognition.stop(); } catch(e) {}
                 setTimeout(() => { try { recognition.start(); } catch(e) {} }, 100);
             }
+
+            // Iniciar sonido de radar
+            startScanSound();
 
             isFakeDetected = false;
             cardRevealRequested = false;
@@ -391,6 +481,8 @@
         });
 
         function finishScan() {
+            stopScanSound(); // Detener pitidos de radar
+
             scannerActive.classList.add('hidden');
             scannerActive.classList.remove('flex');
             scannerResult.classList.remove('hidden');
@@ -398,10 +490,12 @@
 
             if (isFakeDetected) {
                 currentStatus = 'error';
+                playErrorSound(); // Sonido de error grave
                 body.className = "h-screen w-screen flex flex-col items-center justify-center relative bg-error transition-colors duration-500";
                 resultTitle.textContent = "FALSO";
             } else {
                 currentStatus = 'success';
+                playSuccessSound(); // Sonido de éxito agudo
                 body.className = "h-screen w-screen flex flex-col items-center justify-center relative bg-success transition-colors duration-500";
                 resultTitle.textContent = "VERDADERO";
             }
