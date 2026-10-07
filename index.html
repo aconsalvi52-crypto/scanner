@@ -11,7 +11,7 @@
         body {
             font-family: 'Share Tech Mono', monospace;
             background-color: #050505;
-            color: #0f0;
+            color: #10b981; /* green-500 */
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
@@ -19,56 +19,115 @@
             transition: background-color 0.5s ease-in-out;
         }
 
+        /* Patrón de cuadrícula de fondo cibernético */
+        .bg-grid {
+            background-size: 50px 50px;
+            background-image: 
+                linear-gradient(to right, rgba(16, 185, 129, 0.07) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(16, 185, 129, 0.07) 1px, transparent 1px);
+        }
+
         .scan-line {
             position: absolute;
             width: 100%;
-            height: 2px;
-            background: #0f0;
-            box-shadow: 0 0 15px #0f0;
-            animation: scan 2s linear infinite;
+            height: 3px;
+            background: #10b981;
+            box-shadow: 0 0 20px #10b981, 0 0 40px #10b981;
+            animation: scan 3s linear infinite;
+            z-index: 50;
         }
 
         @keyframes scan {
-            0% { top: 0%; opacity: 0; }
+            0% { top: -10%; opacity: 0; }
             10% { opacity: 1; }
             90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
+            100% { top: 110%; opacity: 0; }
+        }
+
+        /* HUD de Radar circular */
+        .radar-circle {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            border: 2px solid rgba(16, 185, 129, 0.5);
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.2) inset;
+            overflow: hidden;
+        }
+        .radar-circle::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            background: conic-gradient(from 0deg, transparent 70%, rgba(16, 185, 129, 0.8) 100%);
+            transform-origin: 0 0;
+            animation: spin 2s linear infinite;
+        }
+        .radar-circle::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 0; width: 100%; height: 1px; background: rgba(16, 185, 129, 0.3);
+        }
+        .radar-vline {
+            position: absolute;
+            top: 0; left: 50%; width: 1px; height: 100%; background: rgba(16, 185, 129, 0.3);
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
         }
 
         .hidden { display: none !important; }
 
-        .bg-error { background-color: #990000 !important; color: white !important; }
-        .bg-success { background-color: #004400 !important; color: #0f0 !important; }
-        .bg-normal { background-color: #050505 !important; color: #0f0 !important; }
+        .bg-error { background-color: #450a0a !important; color: #fca5a5 !important; } /* red-950, red-300 */
+        .bg-success { background-color: #064e3b !important; color: #6ee7b7 !important; } /* emerald-900, emerald-300 */
+        .bg-normal { background-color: #050505 !important; color: #10b981 !important; }
 
         .card-btn, .suit-btn {
-            border: 2px solid #0f0;
-            color: #0f0;
+            border: 2px solid #10b981;
+            color: #10b981;
             border-radius: 0.5rem;
             padding: 0.5rem;
             text-align: center;
             transition: all 0.2s;
+            background: rgba(0,0,0,0.5);
         }
         .card-btn { font-size: 1.25rem; }
         .suit-btn { font-size: 2rem; }
         .card-btn.selected, .suit-btn.selected {
-            background-color: #0f0;
+            background-color: #10b981;
             color: #000;
+            box-shadow: 0 0 15px #10b981;
+        }
+
+        /* Glitch y animaciones de texto */
+        .cyber-text {
+            text-shadow: 0 0 10px currentColor;
+        }
+        .data-stream {
+            font-size: 0.7rem;
+            opacity: 0.3;
+            line-height: 1;
+            word-break: break-all;
         }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col items-center justify-center relative bg-normal" id="main-body">
+<body class="h-screen w-screen flex flex-col items-center justify-center relative bg-normal bg-grid" id="main-body">
 
-    <!-- DEBUG OVERLAY PARA IPHONE -->
-    <div id="debug-overlay" class="absolute bottom-2 left-2 right-2 text-xs text-gray-500 opacity-50 z-50 pointer-events-none text-center">
-        [iOS Mic: <span id="debug-text">...</span>]
+    <!-- OVERLAY DE DATOS HEXADECIMALES (Se muestra en el escaneo) -->
+    <div id="hex-stream" class="absolute inset-0 overflow-hidden text-green-700 data-stream p-2 hidden z-0 pointer-events-none"></div>
+
+    <div id="debug-overlay" class="absolute bottom-2 left-2 right-2 text-[10px] text-gray-600 opacity-40 z-50 pointer-events-none text-center font-sans">
+        [SYS_MIC: <span id="debug-text">STANDBY</span>]
     </div>
 
     <!-- MODAL DE SELECCIÓN DE CARTA -->
-    <div id="card-selector-modal" class="hidden absolute top-0 left-0 w-full h-full bg-black bg-opacity-95 z-[100] flex flex-col items-center justify-center p-4">
-        <h3 class="text-2xl text-green-500 mb-6">⚙️ CONFIGURAR CARTA SECRETA</h3>
+    <div id="card-selector-modal" class="hidden absolute top-0 left-0 w-full h-full bg-black bg-opacity-95 z-[100] flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+        <h3 class="text-2xl text-emerald-500 mb-6 cyber-text">⚙️ CONFIGURACIÓN NÚCLEO</h3>
         
-        <p class="text-green-700 mb-2 text-sm">VALOR</p>
+        <p class="text-emerald-700 mb-2 text-sm tracking-widest">PARÁMETRO 1: VALOR</p>
         <div class="grid grid-cols-7 gap-2 mb-6 w-full max-w-sm" id="value-grid">
             <button class="card-btn" data-val="As">A</button>
             <button class="card-btn" data-val="2">2</button>
@@ -86,7 +145,7 @@
             <button class="card-btn" data-val="Joker">Jkr</button>
         </div>
         
-        <p class="text-green-700 mb-2 text-sm">PALO</p>
+        <p class="text-emerald-700 mb-2 text-sm tracking-widest">PARÁMETRO 2: IDENTIFICADOR</p>
         <div class="grid grid-cols-4 gap-4 mb-8 w-full max-w-sm" id="suit-grid">
             <button class="suit-btn" data-suit="de Corazones"><span class="text-red-500">♥</span></button>
             <button class="suit-btn" data-suit="de Picas"><span>♠</span></button>
@@ -94,57 +153,93 @@
             <button class="suit-btn" data-suit="de Diamantes"><span class="text-red-500">♦</span></button>
         </div>
 
-        <p id="preview-selection" class="text-2xl text-white mb-8 h-8 text-center font-bold">...</p>
+        <div class="bg-gray-900 border border-emerald-800 w-full max-w-sm p-4 rounded text-center mb-8">
+            <p class="text-xs text-emerald-600 mb-1">OBJETIVO ENCRIPTADO:</p>
+            <p id="preview-selection" class="text-2xl text-white font-bold cyber-text">...</p>
+        </div>
         
-        <div class="flex gap-6">
-            <button id="cancel-card-btn" class="border-2 border-red-800 text-red-500 px-6 py-3 rounded text-xl">VOLVER</button>
-            <button id="save-card-btn" class="bg-green-600 text-black px-6 py-3 rounded text-xl font-bold">GUARDAR</button>
+        <div class="flex gap-4 w-full max-w-sm">
+            <button id="cancel-card-btn" class="flex-1 border-2 border-red-900 text-red-500 py-3 rounded text-lg tracking-widest hover:bg-red-900">ABORTAR</button>
+            <button id="save-card-btn" class="flex-1 bg-emerald-600 text-black py-3 rounded text-lg font-bold tracking-widest hover:bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]">CONFIRMAR</button>
         </div>
     </div>
 
     <!-- PANTALLA 1: INICIO -->
-    <div id="start-screen" class="w-full h-full flex flex-col items-center justify-center p-4">
-        <h1 id="app-title" class="text-4xl font-bold mb-16 tracking-widest text-center cursor-pointer transition-opacity duration-300">
-            BIO-SCANNER v4.2
+    <div id="start-screen" class="w-full h-full flex flex-col items-center justify-center p-4 relative z-10">
+        <h1 id="app-title" class="text-5xl font-bold mb-2 tracking-widest text-center cursor-pointer transition-opacity duration-300 cyber-text">
+            BIO-SCAN
         </h1>
-        <button id="enter-btn" class="border-2 border-green-500 text-green-500 px-8 py-5 text-2xl font-bold rounded-lg hover:bg-green-500 hover:text-black transition-all shadow-[0_0_20px_rgba(0,255,0,0.4)] active:scale-95 active:shadow-none">
-            ENTRAR AL SISTEMA
+        <p class="text-emerald-700 tracking-widest mb-16 text-sm">v4.2.0_ALPHA</p>
+        
+        <button id="enter-btn" class="relative overflow-hidden border-2 border-emerald-500 text-emerald-400 px-10 py-6 text-2xl font-bold rounded hover:bg-emerald-500 hover:text-black transition-all shadow-[0_0_30px_rgba(16,185,129,0.2)] active:scale-95 group bg-black bg-opacity-50 backdrop-blur-sm">
+            <span class="relative z-10 tracking-wider">CONECTAR SISTEMA</span>
+            <div class="absolute inset-0 bg-emerald-500 opacity-0 group-hover:opacity-20 transition-opacity"></div>
         </button>
-        <p id="mic-status" class="mt-8 text-xs text-green-800 opacity-50">SISTEMA EN ESPERA</p>
+        
+        <div class="mt-12 flex flex-col items-center">
+            <div class="w-2 h-2 bg-emerald-700 rounded-full animate-ping mb-2"></div>
+            <p id="mic-status" class="text-xs text-emerald-800 opacity-70 tracking-widest">ESPERANDO INICIALIZACIÓN</p>
+        </div>
     </div>
 
     <!-- PANTALLA 2: ESCÁNER PRINCIPAL -->
-    <div id="main-scanner-screen" class="hidden w-full h-full flex flex-col items-center justify-center p-8 relative">
+    <div id="main-scanner-screen" class="hidden w-full h-full flex flex-col items-center justify-center p-6 relative z-10">
+        
+        <!-- ESTADO: REPOSO -->
         <div id="scanner-idle" class="w-full h-full flex flex-col items-center justify-center">
-            <div class="border-4 border-green-500 p-8 rounded-full mb-12 flex items-center justify-center shadow-[0_0_30px_rgba(0,255,0,0.3)]">
-                <span class="text-6xl">📡</span>
+            
+            <div class="relative flex items-center justify-center mb-16">
+                <!-- Efecto de onda exterior -->
+                <div class="absolute w-48 h-48 border border-emerald-800 rounded-full animate-ping opacity-20"></div>
+                <div class="absolute w-40 h-40 border border-emerald-600 rounded-full animate-ping opacity-40" style="animation-delay: 0.5s"></div>
+                
+                <!-- Botón central de escaneo -->
+                <button id="start-scan-btn" class="relative w-32 h-32 rounded-full bg-black border-4 border-emerald-500 flex flex-col items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.4)] hover:bg-emerald-900 transition-colors active:scale-90 group z-10">
+                    <svg class="w-12 h-12 text-emerald-400 group-hover:text-emerald-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+                    <span class="text-[10px] font-bold tracking-widest text-emerald-400">INICIAR</span>
+                </button>
             </div>
-            <button id="start-scan-btn" class="border-2 border-green-500 px-8 py-4 text-xl font-bold rounded-lg hover:bg-green-500 hover:text-black transition-all active:scale-95">
-                INICIAR ESCANEO
-            </button>
+            
+            <p class="text-emerald-600 text-sm tracking-widest opacity-80 uppercase">Listo para escanear sujeto</p>
         </div>
 
+        <!-- ESTADO: ESCANEANDO -->
         <div id="scanner-active" class="hidden w-full h-full flex-col items-center justify-center">
             <div class="scan-line"></div>
-            <div class="w-full max-w-sm border-2 border-current h-10 p-1 rounded relative z-10 bg-black">
-                <div id="progress-bar" class="bg-current h-full w-0 transition-all duration-1000 ease-linear shadow-[0_0_10px_currentColor]"></div>
+            
+            <div class="radar-circle mb-12">
+                <div class="radar-vline"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <svg class="w-16 h-16 text-emerald-500 opacity-50 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                </div>
             </div>
-            <p id="scan-text" class="mt-8 text-xl text-center animate-pulse relative z-10">
-                Iniciando protocolo...
+
+            <div class="w-full max-w-sm bg-gray-900 border border-emerald-800 p-1 rounded mb-4">
+                <div id="progress-bar" class="bg-emerald-500 h-2 w-0 transition-all duration-1000 ease-linear shadow-[0_0_10px_#10b981]"></div>
+            </div>
+            
+            <p id="scan-text" class="text-lg text-center text-emerald-400 tracking-wider h-8">
+                Inicializando biometría...
             </p>
+            <p class="text-[10px] text-emerald-700 mt-2 tracking-widest">PROCESANDO DATOS NEURONALES</p>
         </div>
 
+        <!-- ESTADO: RESULTADO -->
         <div id="scanner-result" class="hidden w-full h-full flex-col items-center justify-center text-center relative z-20">
-            <p class="text-xl text-white mb-2 tracking-widest opacity-80 uppercase">Escaneo finalizado</p>
-            <h2 id="result-title" class="text-6xl font-bold mb-6 animate-pulse"></h2>
-            
-            <div id="card-reveal-container" class="hidden mt-8 border-4 border-current p-8 rounded-xl bg-black bg-opacity-30 shadow-[0_0_40px_currentColor]">
-                <p class="text-xl mb-4 tracking-widest opacity-80">RESULTADO DE ANÁLISIS:</p>
-                <p id="secret-card-display" class="text-5xl font-bold tracking-wider"></p>
+            <div class="border-y border-current w-full py-4 mb-8 bg-black bg-opacity-20 backdrop-blur-sm shadow-[0_0_30px_currentColor]">
+                <p class="text-sm mb-2 tracking-widest opacity-70 uppercase">Estado del Sujeto</p>
+                <h2 id="result-title" class="text-6xl font-black tracking-widest cyber-text"></h2>
             </div>
             
-            <button id="reset-scan-btn" class="mt-16 border-2 border-current px-8 py-3 rounded hover:bg-white hover:bg-opacity-20 transition-colors">
-                NUEVO ESCANEO
+            <div id="card-reveal-container" class="hidden w-full max-w-sm border border-current p-6 rounded bg-black bg-opacity-40 backdrop-blur-md shadow-[0_0_40px_currentColor] relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-current opacity-50"></div>
+                <p class="text-xs mb-4 tracking-widest opacity-60">OBJETIVO EXTRAÍDO:</p>
+                <p id="secret-card-display" class="text-4xl font-bold tracking-wider cyber-text"></p>
+                <div class="absolute bottom-0 left-0 w-full h-1 bg-current opacity-50"></div>
+            </div>
+            
+            <button id="reset-scan-btn" class="mt-16 text-sm border border-current px-8 py-3 rounded hover:bg-white hover:bg-opacity-10 transition-colors tracking-widest">
+                REINICIAR ESCÁNER
             </button>
         </div>
     </div>
@@ -161,6 +256,7 @@
         const scannerActive = document.getElementById('scanner-active');
         const progressBar = document.getElementById('progress-bar');
         const scanText = document.getElementById('scan-text');
+        const hexStream = document.getElementById('hex-stream');
         
         const scannerResult = document.getElementById('scanner-result');
         const resultTitle = document.getElementById('result-title');
@@ -189,7 +285,7 @@
         const DEFAULT_CARD = "As de Picas";
 
         // ==========================================
-        // MOTOR DE SONIDO SINTÉTICO (Web Audio API)
+        // MOTOR DE SONIDO
         // ==========================================
         let audioCtx;
         let scanIntervalId;
@@ -203,7 +299,6 @@
             }
         }
 
-        // Sonido 1: Pitidos tipo radar durante el escaneo
         function startScanSound() {
             if (!audioCtx) return;
             scanIntervalId = setInterval(() => {
@@ -211,23 +306,19 @@
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-                
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(1000 + Math.random() * 500, audioCtx.currentTime); 
-                
-                gain.gain.setValueAtTime(0.02, audioCtx.currentTime); // Volumen bajito
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-                
+                osc.frequency.setValueAtTime(1200 + Math.random() * 800, audioCtx.currentTime); 
+                gain.gain.setValueAtTime(0.015, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.1);
-            }, 300); // Un pitido cada 300ms
+                osc.stop(audioCtx.currentTime + 0.05);
+            }, 150); 
         }
 
         function stopScanSound() {
             clearInterval(scanIntervalId);
         }
 
-        // Sonido 2: Acierto (Verde) - Doble campana aguda
         function playSuccessSound() {
             if (!audioCtx) return;
             const playNote = (freq, timeOffset) => {
@@ -235,23 +326,18 @@
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-                
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(freq, audioCtx.currentTime + timeOffset);
-                
                 gain.gain.setValueAtTime(0, audioCtx.currentTime + timeOffset);
                 gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + timeOffset + 0.05);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + timeOffset + 0.5);
-                
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + timeOffset + 0.6);
                 osc.start(audioCtx.currentTime + timeOffset);
-                osc.stop(audioCtx.currentTime + timeOffset + 0.5);
+                osc.stop(audioCtx.currentTime + timeOffset + 0.6);
             };
-            
-            playNote(800, 0);     // Primer tono
-            playNote(1200, 0.15); // Segundo tono más agudo
+            playNote(880, 0);     // A5
+            playNote(1318.51, 0.15); // E6
         }
 
-        // Sonido 3: Error (Rojo) - Doble zumbido grave
         function playErrorSound() {
             if (!audioCtx) return;
             const playBuzz = (timeOffset) => {
@@ -259,23 +345,18 @@
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-                
-                osc.type = 'sawtooth'; // Sonido rasposo/zumbido
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime + timeOffset);
-                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(110, audioCtx.currentTime + timeOffset); // Más grave
                 gain.gain.setValueAtTime(0, audioCtx.currentTime + timeOffset);
-                gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + timeOffset + 0.05);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + timeOffset + 0.3);
-                
+                gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + timeOffset + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + timeOffset + 0.4);
                 osc.start(audioCtx.currentTime + timeOffset);
-                osc.stop(audioCtx.currentTime + timeOffset + 0.3);
+                osc.stop(audioCtx.currentTime + timeOffset + 0.4);
             };
-
             playBuzz(0);
-            playBuzz(0.2);
+            playBuzz(0.25);
         }
         // ==========================================
-
 
         document.addEventListener('DOMContentLoaded', () => {
             initSpeechRecognition();
@@ -286,7 +367,7 @@
 
         // ------------------ SELECTOR VISUAL ------------------
         function startLongPress(e) {
-            titleEl.style.opacity = '0.5';
+            titleEl.style.opacity = '0.3';
             longPressTimer = setTimeout(() => {
                 titleEl.style.opacity = '1';
                 openCardSelector();
@@ -305,7 +386,7 @@
         titleEl.addEventListener('mouseleave', cancelLongPress);
 
         function updatePreview() {
-            previewSelection.textContent = tempValue === "Joker" ? "Joker" : `${tempValue} ${tempSuit}`;
+            previewSelection.textContent = tempValue === "Joker" ? "JOKER" : `${tempValue.toUpperCase()} ${tempSuit.toUpperCase()}`;
         }
 
         function openCardSelector() {
@@ -346,7 +427,7 @@
             cardSelectorModal.classList.add('hidden');
         });
 
-        // ------------------ RECONOCIMIENTO IOS ------------------
+        // ------------------ RECONOCIMIENTO DE VOZ ------------------
         function initSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
@@ -362,9 +443,10 @@
                     }
                     
                     if (latestTranscript.trim() === "") return;
-                    debugText.textContent = latestTranscript.slice(-40);
+                    debugText.textContent = latestTranscript.slice(-30);
 
-                    if (currentStatus === 'scanning' || currentStatus === 'idle') {
+                    // Sólo escuchar la palabra trampa si el escáner está corriendo
+                    if (currentStatus === 'scanning') {
                         if (latestTranscript.includes("falso") || latestTranscript.includes("mentira") || latestTranscript.includes("falsa")) {
                             isFakeDetected = true;
                         }
@@ -380,7 +462,7 @@
 
                 recognition.onerror = (event) => {
                     if (event.error !== 'no-speech') {
-                        micStatus.textContent = "Error iOS: " + event.error;
+                        micStatus.textContent = "SYS_ERR: " + event.error.toUpperCase();
                     }
                 };
 
@@ -390,26 +472,17 @@
                     }
                 };
             } else {
-                micStatus.textContent = "Safari no soporta API Voz aquí";
+                micStatus.textContent = "SYS_ERR: NATIVE_API_BLOCKED";
             }
         }
 
-        // ENTRAR AL SISTEMA (Hack para iOS)
+        // ------------------ FLUJO DE PANTALLAS ------------------
         enterBtn.addEventListener('click', async () => {
-            // Inicializar motor de sonido
             initAudio();
 
-            // Desbloquear el motor de voz (SpeechSynthesis)
             if ('speechSynthesis' in window) {
                 const unlockAudio = new SpeechSynthesisUtterance('');
                 speechSynthesis.speak(unlockAudio);
-            }
-
-            try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-                micStatus.textContent = "Micro activado";
-            } catch (err) {
-                micStatus.textContent = "Permiso micro denegado";
             }
 
             isScanningOrResult = true;
@@ -425,7 +498,7 @@
 
         function showIdleScanner() {
             currentStatus = 'idle';
-            body.className = "h-screen w-screen flex flex-col items-center justify-center relative bg-normal transition-colors duration-500";
+            body.className = "h-screen w-screen flex flex-col items-center justify-center relative bg-normal bg-grid transition-colors duration-700";
             scannerIdle.classList.remove('hidden');
             scannerIdle.classList.add('flex');
             scannerActive.classList.add('hidden');
@@ -433,10 +506,29 @@
             scannerResult.classList.add('hidden');
             scannerResult.classList.remove('flex');
             cardRevealContainer.classList.add('hidden');
-            debugText.textContent = "..."; 
+            hexStream.classList.add('hidden');
+            debugText.textContent = "STANDBY"; 
         }
 
-        // INICIAR ESCANEO
+        // Generador de lluvia hexadecimal visual
+        let hexInterval;
+        function startHexStream() {
+            hexStream.classList.remove('hidden');
+            hexStream.innerHTML = '';
+            hexInterval = setInterval(() => {
+                let text = '';
+                for(let i=0; i<300; i++) {
+                    text += Math.floor(Math.random()*16).toString(16).toUpperCase() + ' ';
+                }
+                hexStream.innerText = text;
+            }, 100);
+        }
+        function stopHexStream() {
+            clearInterval(hexInterval);
+            hexStream.classList.add('hidden');
+        }
+
+        // INICIAR ESCANEO (AHORA 6 SEGUNDOS)
         startScanBtn.addEventListener('click', () => {
             currentStatus = 'scanning';
             
@@ -445,12 +537,12 @@
                 setTimeout(() => { try { recognition.start(); } catch(e) {} }, 100);
             }
 
-            // Iniciar sonido de radar
             startScanSound();
+            startHexStream();
 
             isFakeDetected = false;
             cardRevealRequested = false;
-            debugText.textContent = "..."; 
+            debugText.textContent = "REC..."; 
 
             scannerIdle.classList.add('hidden');
             scannerIdle.classList.remove('flex');
@@ -458,10 +550,12 @@
             scannerActive.classList.add('flex');
 
             const messages = [
-                "Analizando señales...",
-                "Buscando patrones...",
-                "Calibrando frecuencia...",
-                "Verificando datos..."
+                "Inicializando sensores...",
+                "Analizando campo magnético...",
+                "Buscando patrones cognitivos...",
+                "Calibrando frecuencia base...",
+                "Cruzando datos neuronales...",
+                "Verificando integridad..."
             ];
 
             let currentSecond = 0;
@@ -469,9 +563,9 @@
 
             const scanInterval = setInterval(() => {
                 currentSecond++;
-                progressBar.style.width = `${(currentSecond / 4) * 100}%`;
+                progressBar.style.width = `${(currentSecond / 6) * 100}%`;
                 
-                if (currentSecond < 4) {
+                if (currentSecond < 6) {
                     scanText.textContent = messages[currentSecond];
                 } else {
                     clearInterval(scanInterval);
@@ -481,7 +575,8 @@
         });
 
         function finishScan() {
-            stopScanSound(); // Detener pitidos de radar
+            stopScanSound();
+            stopHexStream();
 
             scannerActive.classList.add('hidden');
             scannerActive.classList.remove('flex');
@@ -490,12 +585,12 @@
 
             if (isFakeDetected) {
                 currentStatus = 'error';
-                playErrorSound(); // Sonido de error grave
+                playErrorSound();
                 body.className = "h-screen w-screen flex flex-col items-center justify-center relative bg-error transition-colors duration-500";
                 resultTitle.textContent = "FALSO";
             } else {
                 currentStatus = 'success';
-                playSuccessSound(); // Sonido de éxito agudo
+                playSuccessSound();
                 body.className = "h-screen w-screen flex flex-col items-center justify-center relative bg-success transition-colors duration-500";
                 resultTitle.textContent = "VERDADERO";
             }
