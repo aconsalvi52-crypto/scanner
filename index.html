@@ -40,11 +40,69 @@
         .bg-error { background-color: #990000 !important; color: white !important; }
         .bg-success { background-color: #004400 !important; color: #0f0 !important; }
         .bg-normal { background-color: #050505 !important; color: #0f0 !important; }
+
+        .card-btn, .suit-btn {
+            border: 2px solid #0f0;
+            color: #0f0;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .card-btn { font-size: 1.25rem; }
+        .suit-btn { font-size: 2rem; }
+        .card-btn.selected, .suit-btn.selected {
+            background-color: #0f0;
+            color: #000;
+        }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col items-center justify-center relative bg-normal" id="main-body">
 
-    <!-- PANTALLA 1: INICIO (SOLO SE VE UNA VEZ) -->
+    <!-- DEBUG OVERLAY PARA IPHONE -->
+    <div id="debug-overlay" class="absolute bottom-2 left-2 right-2 text-xs text-gray-500 opacity-50 z-50 pointer-events-none text-center">
+        [iOS Mic: <span id="debug-text">...</span>]
+    </div>
+
+    <!-- MODAL DE SELECCIÓN DE CARTA -->
+    <div id="card-selector-modal" class="hidden absolute top-0 left-0 w-full h-full bg-black bg-opacity-95 z-[100] flex flex-col items-center justify-center p-4">
+        <h3 class="text-2xl text-green-500 mb-6">⚙️ CONFIGURAR CARTA SECRETA</h3>
+        
+        <p class="text-green-700 mb-2 text-sm">VALOR</p>
+        <div class="grid grid-cols-7 gap-2 mb-6 w-full max-w-sm" id="value-grid">
+            <button class="card-btn" data-val="As">A</button>
+            <button class="card-btn" data-val="2">2</button>
+            <button class="card-btn" data-val="3">3</button>
+            <button class="card-btn" data-val="4">4</button>
+            <button class="card-btn" data-val="5">5</button>
+            <button class="card-btn" data-val="6">6</button>
+            <button class="card-btn" data-val="7">7</button>
+            <button class="card-btn" data-val="8">8</button>
+            <button class="card-btn" data-val="9">9</button>
+            <button class="card-btn" data-val="10">10</button>
+            <button class="card-btn" data-val="Jota">J</button>
+            <button class="card-btn" data-val="Reina">Q</button>
+            <button class="card-btn" data-val="Rey">K</button>
+            <button class="card-btn" data-val="Joker">Jkr</button>
+        </div>
+        
+        <p class="text-green-700 mb-2 text-sm">PALO</p>
+        <div class="grid grid-cols-4 gap-4 mb-8 w-full max-w-sm" id="suit-grid">
+            <button class="suit-btn" data-suit="de Corazones"><span class="text-red-500">♥</span></button>
+            <button class="suit-btn" data-suit="de Picas"><span>♠</span></button>
+            <button class="suit-btn" data-suit="de Tréboles"><span>♣</span></button>
+            <button class="suit-btn" data-suit="de Diamantes"><span class="text-red-500">♦</span></button>
+        </div>
+
+        <p id="preview-selection" class="text-2xl text-white mb-8 h-8 text-center font-bold">...</p>
+        
+        <div class="flex gap-6">
+            <button id="cancel-card-btn" class="border-2 border-red-800 text-red-500 px-6 py-3 rounded text-xl">VOLVER</button>
+            <button id="save-card-btn" class="bg-green-600 text-black px-6 py-3 rounded text-xl font-bold">GUARDAR</button>
+        </div>
+    </div>
+
+    <!-- PANTALLA 1: INICIO -->
     <div id="start-screen" class="w-full h-full flex flex-col items-center justify-center p-4">
         <h1 id="app-title" class="text-4xl font-bold mb-16 tracking-widest text-center cursor-pointer transition-opacity duration-300">
             BIO-SCANNER v4.2
@@ -55,7 +113,7 @@
         <p id="mic-status" class="mt-8 text-xs text-green-800 opacity-50">SISTEMA EN ESPERA</p>
     </div>
 
-    <!-- PANTALLA 2: ESCÁNER PRINCIPAL (DESDE AQUÍ NO SE VUELVE AL INICIO) -->
+    <!-- PANTALLA 2: ESCÁNER PRINCIPAL -->
     <div id="main-scanner-screen" class="hidden w-full h-full flex flex-col items-center justify-center p-8 relative">
         <div id="scanner-idle" class="w-full h-full flex flex-col items-center justify-center">
             <div class="border-4 border-green-500 p-8 rounded-full mb-12 flex items-center justify-center shadow-[0_0_30px_rgba(0,255,0,0.3)]">
@@ -77,7 +135,8 @@
         </div>
 
         <div id="scanner-result" class="hidden w-full h-full flex-col items-center justify-center text-center relative z-20">
-            <h2 id="result-title" class="text-4xl font-bold mb-6 animate-pulse"></h2>
+            <p class="text-xl text-white mb-2 tracking-widest opacity-80 uppercase">Escaneo finalizado</p>
+            <h2 id="result-title" class="text-6xl font-bold mb-6 animate-pulse"></h2>
             
             <div id="card-reveal-container" class="hidden mt-8 border-4 border-current p-8 rounded-xl bg-black bg-opacity-30 shadow-[0_0_40px_currentColor]">
                 <p class="text-xl mb-4 tracking-widest opacity-80">RESULTADO DE ANÁLISIS:</p>
@@ -108,15 +167,25 @@
         const cardRevealContainer = document.getElementById('card-reveal-container');
         const secretCardDisplay = document.getElementById('secret-card-display');
         const resetScanBtn = document.getElementById('reset-scan-btn');
+        const debugText = document.getElementById('debug-text');
+        const micStatus = document.getElementById('mic-status');
         
+        const cardSelectorModal = document.getElementById('card-selector-modal');
+        const saveCardBtn = document.getElementById('save-card-btn');
+        const cancelCardBtn = document.getElementById('cancel-card-btn');
+        const previewSelection = document.getElementById('preview-selection');
+        const valueBtns = document.querySelectorAll('.card-btn');
+        const suitBtns = document.querySelectorAll('.suit-btn');
+
         let longPressTimer;
-        let wakeLock = null;
         let recognition = null;
         let isFakeDetected = false;
         let cardRevealRequested = false;
         let isScanningOrResult = false;
-        let currentStatus = 'idle'; // idle, scanning, success, error
+        let currentStatus = 'idle';
 
+        let tempValue = "As";
+        let tempSuit = "de Picas";
         const DEFAULT_CARD = "As de Picas";
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -126,17 +195,12 @@
             }
         });
 
-        // LONG PRESS PARA CONFIGURAR
+        // ------------------ SELECTOR VISUAL ------------------
         function startLongPress(e) {
             titleEl.style.opacity = '0.5';
             longPressTimer = setTimeout(() => {
                 titleEl.style.opacity = '1';
-                const currentCard = localStorage.getItem('secretCard') || DEFAULT_CARD;
-                const newCard = prompt("⚙️ CONFIGURACIÓN DEL SISTEMA\nIntroduce el dato a forzar:", currentCard);
-                if (newCard !== null && newCard.trim() !== "") {
-                    localStorage.setItem('secretCard', newCard.trim());
-                    if (navigator.vibrate) navigator.vibrate(50);
-                }
+                openCardSelector();
             }, 2000);
         }
 
@@ -151,52 +215,114 @@
         titleEl.addEventListener('mouseup', cancelLongPress);
         titleEl.addEventListener('mouseleave', cancelLongPress);
 
-        // RECONOCIMIENTO DE VOZ
+        function updatePreview() {
+            previewSelection.textContent = tempValue === "Joker" ? "Joker" : `${tempValue} ${tempSuit}`;
+        }
+
+        function openCardSelector() {
+            tempValue = "As"; tempSuit = "de Picas";
+            valueBtns.forEach(b => b.classList.remove('selected'));
+            suitBtns.forEach(b => b.classList.remove('selected'));
+            valueBtns[0].classList.add('selected');
+            suitBtns[1].classList.add('selected');
+            updatePreview();
+            cardSelectorModal.classList.remove('hidden');
+        }
+
+        valueBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                valueBtns.forEach(b => b.classList.remove('selected'));
+                e.currentTarget.classList.add('selected');
+                tempValue = e.currentTarget.getAttribute('data-val');
+                updatePreview();
+            });
+        });
+
+        suitBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                suitBtns.forEach(b => b.classList.remove('selected'));
+                e.currentTarget.classList.add('selected');
+                tempSuit = e.currentTarget.getAttribute('data-suit');
+                updatePreview();
+            });
+        });
+
+        saveCardBtn.addEventListener('click', () => {
+            let finalCard = tempValue === "Joker" ? "Joker" : `${tempValue} ${tempSuit}`;
+            localStorage.setItem('secretCard', finalCard);
+            cardSelectorModal.classList.add('hidden');
+        });
+
+        cancelCardBtn.addEventListener('click', () => {
+            cardSelectorModal.classList.add('hidden');
+        });
+
+        // ------------------ RECONOCIMIENTO IOS ------------------
         function initSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
                 recognition = new SpeechRecognition();
-                recognition.lang = 'es-ES';
+                recognition.lang = 'es-AR'; 
+                // En iOS a veces interimResults falla, pero lo dejamos true por velocidad
                 recognition.interimResults = true;
                 recognition.continuous = true;
 
                 recognition.onresult = (event) => {
-                    const transcript = Array.from(event.results)
-                        .map(result => result[0].transcript)
-                        .join('')
-                        .toLowerCase();
+                    let latestTranscript = "";
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        latestTranscript += event.results[i][0].transcript.toLowerCase();
+                    }
                     
-                    if (currentStatus === 'scanning') {
-                        if (transcript.includes("falso") || transcript.includes("mentira")) {
+                    if (latestTranscript.trim() === "") return;
+                    debugText.textContent = latestTranscript.slice(-40);
+
+                    // Lógica para detectar FALSO en el momento exacto
+                    if (currentStatus === 'scanning' || currentStatus === 'idle') {
+                        if (latestTranscript.includes("falso") || latestTranscript.includes("mentira") || latestTranscript.includes("falsa")) {
                             isFakeDetected = true;
                         }
                     }
 
+                    // Lógica para revelar carta
                     if (currentStatus === 'success' && !cardRevealRequested) {
-                        // "analiza la carta elegida"
-                        if (transcript.includes("analiza") && transcript.includes("carta")) {
+                        if (latestTranscript.includes("carta") && (latestTranscript.includes("analiza") || latestTranscript.includes("decime") || latestTranscript.includes("dime") || latestTranscript.includes("muestra") || latestTranscript.includes("ver"))) {
                             cardRevealRequested = true;
                             revealCard();
                         }
                     }
                 };
 
+                recognition.onerror = (event) => {
+                    if (event.error !== 'no-speech') {
+                        micStatus.textContent = "Error iOS: " + event.error;
+                    }
+                };
+
                 recognition.onend = () => {
-                    // Mantener el micro escuchando si estamos en el scanner
-                    if (isScanningOrResult) {
+                    if (isScanningOrResult && recognition) {
                         try { recognition.start(); } catch(e) {}
                     }
                 };
+            } else {
+                micStatus.textContent = "Safari no soporta API Voz aquí";
             }
         }
 
-        // ENTRAR AL SISTEMA
+        // ENTRAR AL SISTEMA (Hack para iOS)
         enterBtn.addEventListener('click', async () => {
+            // HACK IOS 1: Desbloquear el motor de voz (SpeechSynthesis) en el primer click
+            if ('speechSynthesis' in window) {
+                const unlockAudio = new SpeechSynthesisUtterance('');
+                speechSynthesis.speak(unlockAudio);
+            }
+
+            // HACK IOS 2: Pedir permiso explícito de micro
             try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
-            } catch (err) {}
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                micStatus.textContent = "Micro activado";
+            } catch (err) {
+                micStatus.textContent = "Permiso micro denegado";
+            }
 
             isScanningOrResult = true;
             if (recognition) {
@@ -219,13 +345,22 @@
             scannerResult.classList.add('hidden');
             scannerResult.classList.remove('flex');
             cardRevealContainer.classList.add('hidden');
+            debugText.textContent = "..."; 
         }
 
-        // INICIAR EL ESCANEO
+        // INICIAR ESCANEO
         startScanBtn.addEventListener('click', () => {
             currentStatus = 'scanning';
+            
+            // Forzar reinicio de reconocimiento en iOS al tocar el botón
+            if (recognition) {
+                try { recognition.stop(); } catch(e) {}
+                setTimeout(() => { try { recognition.start(); } catch(e) {} }, 100);
+            }
+
             isFakeDetected = false;
             cardRevealRequested = false;
+            debugText.textContent = "..."; 
 
             scannerIdle.classList.add('hidden');
             scannerIdle.classList.remove('flex');
@@ -241,7 +376,6 @@
 
             let currentSecond = 0;
             progressBar.style.width = '0%';
-            if (navigator.vibrate) navigator.vibrate(50);
 
             const scanInterval = setInterval(() => {
                 currentSecond++;
@@ -249,7 +383,6 @@
                 
                 if (currentSecond < 4) {
                     scanText.textContent = messages[currentSecond];
-                    if (navigator.vibrate) navigator.vibrate(30);
                 } else {
                     clearInterval(scanInterval);
                     finishScan();
@@ -257,7 +390,6 @@
             }, 1000);
         });
 
-        // FINALIZAR ESCANEO Y MOSTRAR RESULTADO VERDE/ROJO
         function finishScan() {
             scannerActive.classList.add('hidden');
             scannerActive.classList.remove('flex');
@@ -265,21 +397,16 @@
             scannerResult.classList.add('flex');
 
             if (isFakeDetected) {
-                // FALLO - ROJO Y VIBRACIÓN FUERTE
                 currentStatus = 'error';
                 body.className = "h-screen w-screen flex flex-col items-center justify-center relative bg-error transition-colors duration-500";
-                resultTitle.textContent = "⚠️ LECTURA FALLIDA";
-                if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]); // Vibración fuerte y larga
+                resultTitle.textContent = "FALSO";
             } else {
-                // ACIERTO - VERDE
                 currentStatus = 'success';
                 body.className = "h-screen w-screen flex flex-col items-center justify-center relative bg-success transition-colors duration-500";
-                resultTitle.textContent = "CONEXIÓN ESTABLECIDA";
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                resultTitle.textContent = "VERDADERO";
             }
         }
 
-        // REVELAR LA CARTA (AL DECIR LA PALABRA CLAVE)
         function revealCard() {
             if (currentStatus !== 'success') return;
             
@@ -287,19 +414,15 @@
             secretCardDisplay.textContent = card.toUpperCase();
             cardRevealContainer.classList.remove('hidden');
             
-            // Hacer que la app "diga" la carta
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(`La carta elegida es el ${card}`);
-                utterance.lang = 'es-ES';
+                utterance.lang = 'es-AR';
                 utterance.rate = 0.9;
                 utterance.pitch = 0.8;
                 speechSynthesis.speak(utterance);
             }
-            
-            if (navigator.vibrate) navigator.vibrate(100);
         }
 
-        // VOLVER A ESCANEAR
         resetScanBtn.addEventListener('click', () => {
             showIdleScanner();
         });
