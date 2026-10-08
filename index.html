@@ -450,10 +450,15 @@
                         if (latestTranscript.includes("falso") || latestTranscript.includes("mentira") || latestTranscript.includes("falsa")) {
                             isFakeDetected = true;
                         }
+                        // Detectar si pide revelar la carta ANTES de terminar
+                        if (latestTranscript.includes("latido") || latestTranscript.includes("latidos")) {
+                            cardRevealRequested = true;
+                        }
                     }
 
-                    if (currentStatus === 'success' && !cardRevealRequested) {
-                        if (latestTranscript.includes("carta") && (latestTranscript.includes("analiza") || latestTranscript.includes("decime") || latestTranscript.includes("dime") || latestTranscript.includes("muestra") || latestTranscript.includes("ver"))) {
+                    if (currentStatus === 'success') {
+                        // Si lo pide DESPUÉS de terminar el escaneo
+                        if (!cardRevealRequested && (latestTranscript.includes("latido") || latestTranscript.includes("latidos"))) {
                             cardRevealRequested = true;
                             revealCard();
                         }
@@ -554,7 +559,6 @@
                 "Analizando campo magnético...",
                 "Buscando patrones cognitivos...",
                 "Calibrando frecuencia base...",
-                "Cruzando datos neuronales...",
                 "Verificando integridad..."
             ];
 
@@ -563,9 +567,9 @@
 
             const scanInterval = setInterval(() => {
                 currentSecond++;
-                progressBar.style.width = `${(currentSecond / 6) * 100}%`;
+                progressBar.style.width = `${(currentSecond / 5) * 100}%`;
                 
-                if (currentSecond < 6) {
+                if (currentSecond < 5) {
                     scanText.textContent = messages[currentSecond];
                 } else {
                     clearInterval(scanInterval);
@@ -593,6 +597,10 @@
                 playSuccessSound();
                 body.className = "h-screen w-screen flex flex-col items-center justify-center relative bg-success transition-colors duration-500";
                 resultTitle.textContent = "VERDADERO";
+                
+                if (cardRevealRequested) {
+                    setTimeout(() => revealCard(), 1000); // 1s de pausa para dar más impacto
+                }
             }
         }
 
