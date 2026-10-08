@@ -1,0 +1,16 @@
+{
+  "name": "Bio-Scanner v4",
+  "short_name": "Scanner",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Green_circle.png/512px-Green_circle.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

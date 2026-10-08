@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bio-Scanner v4.2</title>
+    
+    <!-- Configuración para PWA e instalación en el celular -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Scanner">
+    <meta name="mobile-web-app-capable" content="yes">
+    <!-- Icono genérico (verde) para iOS -->
+    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Green_circle.png/512px-Green_circle.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
@@ -171,14 +181,34 @@
         </h1>
         <p class="text-emerald-700 tracking-widest mb-16 text-sm">v4.2.0_ALPHA</p>
         
-        <button id="enter-btn" class="relative overflow-hidden border-2 border-emerald-500 text-emerald-400 px-10 py-6 text-2xl font-bold rounded hover:bg-emerald-500 hover:text-black transition-all shadow-[0_0_30px_rgba(16,185,129,0.2)] active:scale-95 group bg-black bg-opacity-50 backdrop-blur-sm">
+        <button id="enter-btn" class="relative overflow-hidden border-2 border-emerald-500 text-emerald-400 px-10 py-6 text-2xl font-bold rounded hover:bg-emerald-500 hover:text-black transition-all shadow-[0_0_30px_rgba(16,185,129,0.2)] active:scale-95 group bg-black bg-opacity-50 backdrop-blur-sm mb-12">
             <span class="relative z-10 tracking-wider">CONECTAR SISTEMA</span>
             <div class="absolute inset-0 bg-emerald-500 opacity-0 group-hover:opacity-20 transition-opacity"></div>
         </button>
+
+        <!-- Botón de Instalación PWA -->
+        <button id="install-app-btn" class="hidden flex items-center gap-2 border border-emerald-800 text-emerald-600 px-4 py-2 rounded-full text-xs tracking-widest hover:bg-emerald-900 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            INSTALAR APP (OFFLINE)
+        </button>
         
-        <div class="mt-12 flex flex-col items-center">
+        <div class="mt-12 flex flex-col items-center absolute bottom-10">
             <div class="w-2 h-2 bg-emerald-700 rounded-full animate-ping mb-2"></div>
             <p id="mic-status" class="text-xs text-emerald-800 opacity-70 tracking-widest">ESPERANDO INICIALIZACIÓN</p>
+        </div>
+    </div>
+
+    <!-- Modal de Instrucciones iOS -->
+    <div id="ios-install-modal" class="hidden absolute top-0 left-0 w-full h-full bg-black bg-opacity-95 z-[200] flex flex-col items-center justify-center p-6 backdrop-blur-sm text-center">
+        <div class="border border-emerald-500 p-6 rounded-lg bg-gray-900 max-w-sm">
+            <h3 class="text-xl text-emerald-400 font-bold mb-4 cyber-text">INSTALACIÓN EN IPHONE</h3>
+            <p class="text-emerald-600 mb-6 text-sm">Para instalar esta app sin usar la App Store:</p>
+            <ol class="text-left text-emerald-500 text-sm mb-6 space-y-3">
+                <li>1. Toca el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba) en la barra de abajo de Safari.</li>
+                <li>2. Baja por el menú y selecciona <b>"Agregar a inicio"</b>.</li>
+                <li>3. Toca <b>"Agregar"</b> arriba a la derecha.</li>
+            </ol>
+            <button id="close-ios-modal" class="w-full bg-emerald-700 text-black py-2 rounded font-bold hover:bg-emerald-600">ENTENDIDO</button>
         </div>
     </div>
 
@@ -623,6 +653,61 @@
         resetScanBtn.addEventListener('click', () => {
             showIdleScanner();
         });
+
+        // ==========================================
+        // LÓGICA DE INSTALACIÓN (PWA)
+        // ==========================================
+        const installAppBtn = document.getElementById('install-app-btn');
+        const iosInstallModal = document.getElementById('ios-install-modal');
+        const closeIosModal = document.getElementById('close-ios-modal');
+        let deferredPrompt;
+
+        // Detectar si está en iOS (iPhone/iPad)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        // Detectar si ya está instalada (en modo standalone)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+        if (!isStandalone) {
+            installAppBtn.classList.remove('hidden');
+        }
+
+        // Interceptar el prompt nativo en Android
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+        });
+
+        installAppBtn.addEventListener('click', async () => {
+            if (isIOS) {
+                // Mostrar instrucciones para iOS
+                iosInstallModal.classList.remove('hidden');
+            } else if (deferredPrompt) {
+                // Lanzar prompt nativo en Android
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installAppBtn.classList.add('hidden');
+                }
+                deferredPrompt = null;
+            } else {
+                alert("Tu navegador no soporta instalación automática. Agrega la página desde el menú de opciones.");
+            }
+        });
+
+        closeIosModal.addEventListener('click', () => {
+            iosInstallModal.classList.add('hidden');
+        });
+
+        // ==========================================
+        // REGISTRO DE SERVICE WORKER PARA APP OFFLINE
+        // ==========================================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registrado', reg))
+                    .catch(err => console.log('Error registrando Service Worker', err));
+            });
+        }
     </script>
 </body>
 </html>
